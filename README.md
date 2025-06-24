@@ -1,5 +1,18 @@
 # Vinyl Timecode
 
+    codex/set-up-tests-with-pytest-and-document-usage
+This repository contains utilities for generating audio fingerprints and detecting playback position.
+
+## Running tests
+
+The project uses `pytest` for its test suite. After installing dependencies (e.g. `pip install -r requirements.txt` or `pip install librosa`), run:
+
+```bash
+pytest
+```
+
+This will execute all tests in the `tests/` directory.
+=======
 This project demonstrates vinyl fingerprint generation and detection. It analyzes small audio windows from vinyl recordings and stores them in a JSON database. The detector can then estimate the playback position of a record and synchronize a digital track.
 
 ## Setup
@@ -35,3 +48,4 @@ This project demonstrates vinyl fingerprint generation and detection. It analyze
 - `fingerprint_data.json` – generated fingerprint database.
 
 Running the above steps will create the database and start synchronized playback between the vinyl and the digital track.
+ main

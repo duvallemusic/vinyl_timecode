@@ -41,8 +41,13 @@ class FingerprintDetector:
         best_distance = float("inf")
 
         track_data = self.fingerprint_db.get(track_name, {}).get(variation, {})
+        codex/set-up-tests-with-pytest-and-document-usage
+        for timestamp_str, stored_features in track_data.items():
+            dist = self.compare_features(features, [stored_features])
+
         for timestamp_str, feature_list in track_data.items():
             dist = self.compare_features(features, [feature_list])
+        main
             if dist < best_distance:
                 best_distance = dist
                 best_timestamp = float(timestamp_str)
