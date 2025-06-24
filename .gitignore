@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+ codex/set-up-tests-with-pytest-and-document-usage
+
+*.wav
+fingerprint_data.json
+ main
