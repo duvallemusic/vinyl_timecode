@@ -43,9 +43,8 @@ class FingerprintDetector:
         best_distance = float("inf")
 
         track_data = self.fingerprint_db.get(track_name, {}).get(variation, {})
-        feature_list = list(self.fingerprint_db[track][variation].values())
-        for timestamp_str, feature_list in track_data.items():
-            dist = self.compare_features(features, feature_list)
+        for timestamp_str, stored_features in track_data.items():
+            dist = self.compare_features(features, [stored_features])
             if dist < best_distance:
                 best_distance = dist
                 best_timestamp = float(timestamp_str)
