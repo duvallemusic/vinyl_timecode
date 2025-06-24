@@ -3,6 +3,7 @@ import json
 import librosa
 from glob import glob
 from tqdm import tqdm
+import re
 
 AUDIO_FOLDER = "vinyl_samples"
 OUTPUT_JSON = "fingerprint_data.json"
@@ -33,15 +34,21 @@ def generate_fingerprint_database():
         print("[ERRO] Nenhum arquivo .wav encontrado na pasta.")
         return
 
+    pattern = re.compile(r"(?P<track>.+?)_(?P<variation>.+?)_\d+$")
+
     for file in tqdm(files, desc="Processando áudios"):
-        # Ajuste para pegar o nome antes do primeiro "_33rpm"
         base = os.path.splitext(os.path.basename(file))[0]
-        if "_33rpm" in base:
-            track_name = base.split("_33rpm")[0]
-        else:
-            track_name = base.split("_")[0]
+        match = pattern.match(base)
+        if not match:
+            print(f"[WARN] Formato de nome inesperado: {base}")
+            continue
+        track_name = match.group("track")
+        variation = match.group("variation")
+
         if track_name not in db:
-            db[track_name] = {"33rpm": {}}
+            db[track_name] = {}
+        if variation not in db[track_name]:
+            db[track_name][variation] = {}
         y, sr = librosa.load(file, sr=SAMPLE_RATE)
         hop_samples = int(WINDOW_DURATION * sr)
         # Garante que só pega segmentos completos
@@ -50,7 +57,7 @@ def generate_fingerprint_database():
             segment = y[start:end]
             timestamp = round(start / sr, 2)
             features = extract_features(segment, sr)
-            db[track_name]["33rpm"][str(timestamp)] = features
+            db[track_name][variation][str(timestamp)] = features
 
     try:
         with open(OUTPUT_JSON, "w") as f:
