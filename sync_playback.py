@@ -3,6 +3,7 @@ import threading
 import sounddevice as sd
 import soundfile as sf
 import numpy as np
+import librosa
 from detector import FingerprintDetector
 
 SAMPLE_RATE = 22050
@@ -28,10 +29,12 @@ def main():
     block_size = int(SAMPLE_RATE * BUFFER_DURATION)
     playback_pos = 0
     stop_flag = False
+    playback_speed = 1.0
+    direction = 1
 
     # Função da thread de detecção
     def detection_thread():
-        nonlocal playback_pos, stop_flag
+        nonlocal playback_pos, stop_flag, playback_speed, direction
         previous_ts = None
         previous_time = None
 
@@ -47,6 +50,19 @@ def main():
                 result = detector.get_live_position(mono_data)
                 if result is not None:
                     estimated_ts, _ = result
+                    now = time.time()
+
+                    if previous_ts is not None and previous_time is not None:
+                        dt_pos = estimated_ts - previous_ts
+                        dt_time = now - previous_time
+                        if dt_time > 0:
+                            new_speed = dt_pos / dt_time
+                            # suaviza a estimativa de velocidade
+                            playback_speed = 0.7 * playback_speed + 0.3 * abs(new_speed)
+                            direction = -1 if new_speed < 0 else 1
+
+                    previous_ts = estimated_ts
+                    previous_time = now
 
                     print(f"Reproduzindo a partir de {estimated_ts:.2f}s")
                     playback_pos = int(estimated_ts * SAMPLE_RATE)
@@ -68,15 +84,31 @@ def main():
 
             # Loop principal de reprodução
             while True:
-                end_pos = min(playback_pos + block_size, len(audio_data))
-                audio_block = audio_data[playback_pos:end_pos]
+                current_size = int(block_size * abs(playback_speed)) or block_size
 
-                # Preenche com zeros se o bloco for pequeno
+                if direction == 1:
+                    end_pos = min(playback_pos + current_size, len(audio_data))
+                    audio_block = audio_data[playback_pos:end_pos]
+                    playback_pos = end_pos
+                else:
+                    start_pos = max(playback_pos - current_size, 0)
+                    audio_block = audio_data[start_pos:playback_pos][::-1]
+                    playback_pos = start_pos
+
+                if len(audio_block) == 0:
+                    audio_block = np.zeros(block_size)
+                else:
+                    try:
+                        audio_block = librosa.effects.time_stretch(audio_block, abs(playback_speed))
+                    except Exception:
+                        pass
+
                 if len(audio_block) < block_size:
                     audio_block = np.pad(audio_block, (0, block_size - len(audio_block)))
+                elif len(audio_block) > block_size:
+                    audio_block = audio_block[:block_size]
 
                 output_stream.write(audio_block.reshape(-1, 1))
-                playback_pos += block_size
                 time.sleep(BUFFER_DURATION)
 
     except KeyboardInterrupt:

@@ -41,9 +41,11 @@ def generate_fingerprint_database():
         match = pattern.match(base)
         if not match:
             print(f"[WARN] Formato de nome inesperado: {base}")
-            continue
-        track_name = match.group("track")
-        variation = match.group("variation")
+            track_name = base
+            variation = "default"
+        else:
+            track_name = match.group("track")
+            variation = match.group("variation")
 
         if track_name not in db:
             db[track_name] = {}
