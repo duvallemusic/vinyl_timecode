@@ -39,11 +39,13 @@ def generate_fingerprint_database():
     for file in tqdm(files, desc="Processando áudios"):
         base = os.path.splitext(os.path.basename(file))[0]
         match = pattern.match(base)
-        if not match:
-            print(f"[WARN] Formato de nome inesperado: {base}")
-            continue
-        track_name = match.group("track")
-        variation = match.group("variation")
+        if match:
+            track_name = match.group("track")
+            variation = match.group("variation")
+        else:
+            print(f"[WARN] Formato de nome inesperado: {base}. Usando 'default'.")
+            track_name = base
+            variation = "default"
 
         if track_name not in db:
             db[track_name] = {}
