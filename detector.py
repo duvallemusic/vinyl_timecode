@@ -16,6 +16,7 @@ class FingerprintDetector:
         chroma = librosa.feature.chroma_stft(y=y, sr=SAMPLE_RATE, hop_length=HOP_LENGTH)
         zcr = librosa.feature.zero_crossing_rate(y, hop_length=HOP_LENGTH)
         spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=SAMPLE_RATE, hop_length=HOP_LENGTH)
+
         return {
             "mfcc": mfcc.mean(axis=1).tolist(),
             "chroma": chroma.mean(axis=1).tolist(),
@@ -26,28 +27,27 @@ class FingerprintDetector:
     def compare_features(self, live, stored_list):
         distances = []
         for f in stored_list:
-            d = (
-                0.5 * cosine(live["mfcc"], f["mfcc"]) +
-                0.3 * cosine(live["chroma"], f["chroma"]) +
-                0.1 * abs(live["zcr"] - f["zcr"]) +
-                0.1 * abs(live["spectral_centroid"] - f["spectral_centroid"])
-            )
-            distances.append(d)
+            try:
+                d = (
+                    0.5 * cosine(live["mfcc"], f["mfcc"]) +
+                    0.3 * cosine(live["chroma"], f["chroma"]) +
+                    0.1 * abs(live["zcr"] - f["zcr"]) +
+                    0.1 * abs(live["spectral_centroid"] - f["spectral_centroid"])
+                )
+                distances.append(d)
+            except Exception:
+                distances.append(float("inf"))
         return min(distances)
 
     def get_live_position(self, audio_buffer, track_name="g-funk-demo", variation="33rpm"):
+        """Retorna (timestamp, distância) da melhor correspondência."""
         features = self.extract_features(audio_buffer)
         best_timestamp = None
         best_distance = float("inf")
 
         track_data = self.fingerprint_db.get(track_name, {}).get(variation, {})
-        codex/set-up-tests-with-pytest-and-document-usage
         for timestamp_str, stored_features in track_data.items():
             dist = self.compare_features(features, [stored_features])
-
-        for timestamp_str, feature_list in track_data.items():
-            dist = self.compare_features(features, [feature_list])
-        main
             if dist < best_distance:
                 best_distance = dist
                 best_timestamp = float(timestamp_str)
