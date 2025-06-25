@@ -9,7 +9,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 import detector
 
 
-def create_tone(path, sr=detector.SAMPLE_RATE, duration=0.1, freq=440.0):
+def create_tone(path, sr=detector.SAMPLE_RATE, duration=None, freq=440.0):
+    if duration is None:
+        duration = detector.WINDOW_DURATION * detector.NUM_WINDOWS
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
     data = 0.5 * np.sin(2 * np.pi * freq * t)
     sf.write(path, data, sr)

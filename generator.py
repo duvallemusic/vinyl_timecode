@@ -1,6 +1,7 @@
 import os
 import json
 import librosa
+import numpy as np
 from glob import glob
 from tqdm import tqdm
 import re
@@ -10,18 +11,15 @@ OUTPUT_JSON = "fingerprint_data.json"
 SAMPLE_RATE = 22050
 HOP_LENGTH = 512
 WINDOW_DURATION = 0.1  # segundos
+NUM_WINDOWS = 3  # numero de janelas consecutivas por fingerprint
 
 def extract_features(y, sr):
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13, hop_length=HOP_LENGTH)
-    chroma = librosa.feature.chroma_stft(y=y, sr=sr, hop_length=HOP_LENGTH)
-    zcr = librosa.feature.zero_crossing_rate(y, hop_length=HOP_LENGTH)
-    spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=sr, hop_length=HOP_LENGTH)
-    return {
-        "mfcc": mfcc.mean(axis=1).tolist(),
-        "chroma": chroma.mean(axis=1).tolist(),
-        "zcr": zcr.mean().item(),
-        "spectral_centroid": spectral_centroid.mean().item()
-    }
+    """Extrai um espectrograma mel em escala log."""
+    S = librosa.feature.melspectrogram(
+        y=y, sr=sr, n_mels=20, n_fft=1024, hop_length=HOP_LENGTH
+    )
+    log_S = librosa.power_to_db(S, ref=np.max)
+    return log_S.flatten().tolist()
 
 def generate_fingerprint_database():
     db = {}
@@ -51,9 +49,10 @@ def generate_fingerprint_database():
             db[track_name][variation] = {}
         y, sr = librosa.load(file, sr=SAMPLE_RATE)
         hop_samples = int(WINDOW_DURATION * sr)
-        # Garante que só pega segmentos completos
-        for start in range(0, len(y) - hop_samples + 1, hop_samples):
-            end = start + hop_samples
+        segment_len = hop_samples * NUM_WINDOWS
+        # Garante que só pega segmentos completos usando varias janelas
+        for start in range(0, len(y) - segment_len + 1, hop_samples):
+            end = start + segment_len
             segment = y[start:end]
             timestamp = round(start / sr, 2)
             features = extract_features(segment, sr)
