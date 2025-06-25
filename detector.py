@@ -1,9 +1,12 @@
 import json
 import librosa
+import numpy as np
 from scipy.spatial.distance import cosine
 
 SAMPLE_RATE = 22050
 HOP_LENGTH = 512
+WINDOW_DURATION = 0.1
+NUM_WINDOWS = 3
 FINGERPRINT_FILE = "fingerprint_data.json"
 
 class FingerprintDetector:
@@ -12,29 +15,23 @@ class FingerprintDetector:
             self.fingerprint_db = json.load(f)
 
     def extract_features(self, y):
-        mfcc = librosa.feature.mfcc(y=y, sr=SAMPLE_RATE, n_mfcc=13, hop_length=HOP_LENGTH)
-        chroma = librosa.feature.chroma_stft(y=y, sr=SAMPLE_RATE, hop_length=HOP_LENGTH)
-        zcr = librosa.feature.zero_crossing_rate(y, hop_length=HOP_LENGTH)
-        spectral_centroid = librosa.feature.spectral_centroid(y=y, sr=SAMPLE_RATE, hop_length=HOP_LENGTH)
-
-        return {
-            "mfcc": mfcc.mean(axis=1).tolist(),
-            "chroma": chroma.mean(axis=1).tolist(),
-            "zcr": zcr.mean().item(),
-            "spectral_centroid": spectral_centroid.mean().item()
-        }
+        """Retorna um vetor do espectrograma mel."""
+        S = librosa.feature.melspectrogram(
+            y=y, sr=SAMPLE_RATE, n_mels=20, n_fft=1024, hop_length=HOP_LENGTH
+        )
+        log_S = librosa.power_to_db(S, ref=np.max)
+        return log_S.flatten().tolist()
 
     def compare_features(self, live, stored_list):
         distances = []
+        live_arr = np.array(live)
         for f in stored_list:
             try:
-                d = (
-                    0.5 * cosine(live["mfcc"], f["mfcc"]) +
-                    0.3 * cosine(live["chroma"], f["chroma"]) +
-                    0.1 * abs(live["zcr"] - f["zcr"]) +
-                    0.1 * abs(live["spectral_centroid"] - f["spectral_centroid"])
-                )
-                distances.append(d)
+                f_arr = np.array(f)
+                if len(f_arr) != len(live_arr):
+                    distances.append(float("inf"))
+                else:
+                    distances.append(cosine(live_arr, f_arr))
             except Exception:
                 distances.append(float("inf"))
         return min(distances)
